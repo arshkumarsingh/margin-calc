@@ -6,8 +6,7 @@ use gui::App;
 fn main() {
     let options = eframe::NativeOptions::default();
     eframe::run_native(
-        "Margin Calc",
+        Box::new(App::default()),
         options,
-        Box::new(|_cc| Box::new(App::default())),
     );
 }

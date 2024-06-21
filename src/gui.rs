@@ -1,4 +1,4 @@
-use eframe::egui;
+use eframe::{self, epi};
 use crate::api::{get_option_margin, get_option_symbols, OptionSymbol, OptionMarginResponse};
 use tokio::runtime::Runtime;
 use std::time::{Duration, Instant};
@@ -9,58 +9,65 @@ pub struct App {
     symbols: Vec<OptionSymbol>,
     selected_symbol: Option<String>,
     margin_info: Option<OptionMarginResponse>,
-    last_refresh: Instant,
     error_message: Option<String>,
+    last_refresh: Instant,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
-            api_key: "".to_owned(),
-            access_token: "".to_owned(),
-            symbols: vec![],
+            api_key: String::new(),
+            access_token: String::new(),
+            symbols: Vec::new(),
             selected_symbol: None,
             margin_info: None,
-            last_refresh: Instant::now(),
             error_message: None,
+            last_refresh: Instant::now(),
         }
     }
 }
 
 impl App {
-    pub fn refresh_symbols(&mut self) {
+    fn refresh_symbols(&mut self) {
         let api_key = self.api_key.clone();
         let access_token = self.access_token.clone();
         let rt = Runtime::new().unwrap();
-        rt.block_on(async {
-            match get_option_symbols(&api_key, &access_token).await {
-                Ok(symbols) => self.symbols = symbols,
-                Err(err) => self.error_message = Some(format!("Error fetching symbols: {:?}", err)),
+
+        match rt.block_on(get_option_symbols(&api_key, &access_token)) {
+            Ok(symbols) => {
+                self.symbols = symbols;
+                self.last_refresh = Instant::now();
+                self.error_message = None;
             }
-        });
-        self.last_refresh = Instant::now();
+            Err(err) => {
+                self.error_message = Some(format!("Failed to fetch symbols: {}", err));
+            }
+        }
     }
 
-    pub fn fetch_margin(&mut self) {
-        if let Some(symbol) = &self.selected_symbol {
+    fn fetch_margin(&mut self) {
+        if let Some(selected_symbol) = &self.selected_symbol {
             let api_key = self.api_key.clone();
             let access_token = self.access_token.clone();
+            let symbol = selected_symbol.clone();
             let rt = Runtime::new().unwrap();
-            rt.block_on(async {
-                match get_option_margin(&api_key, &access_token, symbol, "NSE", "FO").await {
-                    Ok(margin) => self.margin_info = Some(margin),
-                    Err(err) => self.error_message = Some(format!("Error fetching margin: {:?}", err)),
+
+            match rt.block_on(get_option_margin(&api_key, &access_token, &symbol, "NSE", "OPTSTK")) {
+                Ok(margin_info) => {
+                    self.margin_info = Some(margin_info);
+                    self.error_message = None;
                 }
-            });
+                Err(err) => {
+                    self.error_message = Some(format!("Failed to fetch margin: {}", err));
+                }
+            }
         }
     }
 }
 
-impl eframe::App for App {
-    fn update(&mut self, ctx: &egui::Context, _: &mut eframe::Frame) {
+impl epi::App for App {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Zerodha Option Margin");
-
             ui.horizontal(|ui| {
                 ui.label("API Key:");
                 ui.text_edit_singleline(&mut self.api_key);
@@ -107,5 +114,9 @@ impl eframe::App for App {
                 ui.label(format!("Error: {}", error_message));
             }
         });
+    }
+
+    fn name(&self) -> &str {
+        "Margin Calc"
     }
 }
