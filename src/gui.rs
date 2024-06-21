@@ -100,7 +100,7 @@ impl epi::App for App {
 
             if let Some(margin_info) = &self.margin_info {
                 ui.label("Margin Info:");
-                for (symbol, margin) in &margin_info.data {
+                for (symbol, margin) in &margin_info.1 {
                     ui.group(|ui| {
                         ui.label(format!("Symbol: {}", symbol));
                         ui.label(format!("Initial Margin: {}", margin.initial));

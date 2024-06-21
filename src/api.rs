@@ -3,10 +3,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 
 #[derive(Deserialize, Debug)]
-pub struct OptionMarginResponse {
-    pub success: bool,
-    pub data: HashMap<String, OptionMarginData>,
-}
+pub struct OptionMarginResponse(pub bool, pub HashMap<String, OptionMarginData>);
 
 #[derive(Deserialize, Debug)]
 pub struct OptionMarginData {
